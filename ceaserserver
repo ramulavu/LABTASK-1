@@ -1,0 +1,47 @@
+import socket
+
+# Caesar Cipher Functions
+def caesar_cipher(text, key, decrypt=False):
+    result = ""
+    shift = -key if decrypt else key  # Reverse shift if decrypting
+    
+    for char in text:
+        if char.isalpha():  # Encrypt only letters
+            start = ord('A') if char.isupper() else ord('a')
+            result += chr((ord(char) - start + shift) % 26 + start)
+        else:
+            result += char  # Keep non-alphabet characters unchanged
+    return result
+
+def start_server():
+    host = "127.0.0.1"
+    port = 12345
+    key = 3  # Shift for Caesar Cipher
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+
+    print(f"🔒 Secure Server started on {host}:{port}, waiting for connections...")
+
+    conn, addr = server_socket.accept()
+    print(f"✅ Connected by {addr}")
+
+    while True:
+        encrypted_data = conn.recv(1024).decode()
+        if not encrypted_data or encrypted_data.lower() == "exit":
+            print("❌ Client disconnected.")
+            break
+        
+        decrypted_data = caesar_cipher(encrypted_data, key, decrypt=True)  # Decrypt received data
+        print(f"🔑 Decrypted from Client: {decrypted_data}")
+
+        response = input("Server: ")
+        encrypted_response = caesar_cipher(response, key)  # Encrypt response
+        conn.send(encrypted_response.encode())
+
+    conn.close()
+    server_socket.close()
+
+if __name__ == "__main__":
+    start_server()
