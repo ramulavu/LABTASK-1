@@ -1,0 +1,41 @@
+import socket
+
+# Caesar Cipher Functions
+def caesar_cipher(text, key, decrypt=False):
+    result = ""
+    shift = -key if decrypt else key  # Reverse shift if decrypting
+    
+    for char in text:
+        if char.isalpha():
+            start = ord('A') if char.isupper() else ord('a')
+            result += chr((ord(char) - start + shift) % 26 + start)
+        else:
+            result += char
+    return result
+
+def start_client():
+    host = "127.0.0.1"
+    port = 12345
+    key = 3  # Shift for Caesar Cipher
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+
+    print("🔒 Secure Chat: Connected to the server. Type 'exit' to quit.")
+
+    while True:
+        message = input("Client: ")
+        encrypted_message = caesar_cipher(message, key)  # Encrypt message before sending
+        client_socket.send(encrypted_message.encode())
+
+        if message.lower() == "exit":
+            break
+
+        encrypted_response = client_socket.recv(1024).decode()
+        decrypted_response = caesar_cipher(encrypted_response, key, decrypt=True)  # Decrypt response
+        print(f"🔑 Decrypted from Server: {decrypted_response}")
+
+    client_socket.close()
+
+if __name__ == "__main__":
+    start_client()
