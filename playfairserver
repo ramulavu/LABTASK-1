@@ -1,0 +1,88 @@
+import socket
+
+def generate_playfair_matrix(key):
+    key = "".join(dict.fromkeys(key.replace("J", "I")))  # Remove duplicates
+    alphabet = "ABCDEFGHIKLMNOPQRSTUVWXYZ"
+    matrix = []
+
+    for char in key + alphabet:
+        if char not in matrix:
+            matrix.append(char)
+
+    return [matrix[i:i+5] for i in range(0, 25, 5)]
+
+def find_position(matrix, char):
+    for row in range(5):
+        if char in matrix[row]:
+            return row, matrix[row].index(char)
+
+def playfair_encrypt(plaintext, matrix):
+    plaintext = plaintext.upper().replace("J", "I").replace(" ", "")
+    if len(plaintext) % 2 != 0:
+        plaintext += "X"
+
+    ciphertext = ""
+    for i in range(0, len(plaintext), 2):
+        a, b = plaintext[i], plaintext[i+1]
+        row_a, col_a = find_position(matrix, a)
+        row_b, col_b = find_position(matrix, b)
+
+        if row_a == row_b:  # Same row
+            ciphertext += matrix[row_a][(col_a + 1) % 5] + matrix[row_b][(col_b + 1) % 5]
+        elif col_a == col_b:  # Same column
+            ciphertext += matrix[(row_a + 1) % 5][col_a] + matrix[(row_b + 1) % 5][col_b]
+        else:  # Rectangle swap
+            ciphertext += matrix[row_a][col_b] + matrix[row_b][col_a]
+
+    return ciphertext
+
+def playfair_decrypt(ciphertext, matrix):
+    plaintext = ""
+    for i in range(0, len(ciphertext), 2):
+        a, b = ciphertext[i], ciphertext[i+1]
+        row_a, col_a = find_position(matrix, a)
+        row_b, col_b = find_position(matrix, b)
+
+        if row_a == row_b:  # Same row
+            plaintext += matrix[row_a][(col_a - 1) % 5] + matrix[row_b][(col_b - 1) % 5]
+        elif col_a == col_b:  # Same column
+            plaintext += matrix[(row_a - 1) % 5][col_a] + matrix[(row_b - 1) % 5][col_b]
+        else:  # Rectangle swap
+            plaintext += matrix[row_a][col_b] + matrix[row_b][col_a]
+
+    return plaintext
+
+def start_server():
+    host = "127.0.0.1"
+    port = 12345
+    key = "SECURITY"  # Playfair key
+
+    matrix = generate_playfair_matrix(key)
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+
+    print(f"🔒 Playfair Secure Server started on {host}:{port}, waiting for connections...")
+
+    conn, addr = server_socket.accept()
+    print(f"✅ Connected by {addr}")
+
+    while True:
+        encrypted_data = conn.recv(1024).decode()
+        if not encrypted_data or encrypted_data.lower() == "exit":
+            print("❌ Client disconnected.")
+            break
+        
+        decrypted_data = playfair_decrypt(encrypted_data, matrix)
+        print(f"🔑 Decrypted from Client: {decrypted_data}")
+
+        response = input("Server: ")
+        encrypted_response = playfair_encrypt(response, matrix)
+        conn.send(encrypted_response.encode())
+
+    conn.close()
+    server_socket.close()
+
+if __name__ == "__main__":
+    start_server()
